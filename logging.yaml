@@ -17,5 +17,6 @@ handlers:
     interval: 7
     backupCount: 4
 loggers:
-  adder:
+  __main__:
     handlers: [ch, fh]
+    level: DEBUG

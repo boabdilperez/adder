@@ -19,7 +19,6 @@ with open("logging.yaml", "r") as f:
     logging.config.dictConfig(contents)
 logger = logging.getLogger(__name__)
 
-
 # Parser config
 parser = argparse.ArgumentParser(
     description="Adds DIA IP addresses from Netbox into the Cisco Firewalls and SROS routers"
