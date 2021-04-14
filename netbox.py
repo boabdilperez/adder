@@ -1,8 +1,13 @@
 from __future__ import annotations
+from utils import *
 from pynetbox.core.api import Api
 from pynetbox.models.ipam import Record
 from configparser import ConfigParser
 from typing import Any
+import logging
+
+# Logging enable
+logger = logging.getLogger(__name__)
 
 # Read in configuration data from config.ini
 config = ConfigParser()

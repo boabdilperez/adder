@@ -1,10 +1,15 @@
 from __future__ import annotations
+from utils import *
 from typing import Any
 from datetime import datetime, timedelta
 from getpass import getpass
 from configparser import ConfigParser
 from requests.models import Response
 import requests
+import logging
+
+# Logging enable
+logger = logging.getLogger(__name__)
 
 # Read in configuration data from config.ini
 config = ConfigParser()
@@ -34,7 +39,7 @@ class AdderFMC:
         try:
             _tokens: dict[str, str] = self.get_tokens()
         except REQUESTS_EXCEPTIONS as e:
-            print("HTTP/S error connecting to FMC: ", e)
+            logger.error(f"Failed to connect to FMC: ", e)
             raise
 
         self.auth_token: str = _tokens["auth"]

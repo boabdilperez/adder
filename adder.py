@@ -1,22 +1,13 @@
 from __future__ import annotations
+from utils import *
 from fmc import AdderFMC
 from netbox import AdderNetbox
-from utils import *
 from pprint import pprint
 import argparse
-import logging, logging.config
-import yaml
+import logging
 
 
-# Logging config
-with open("logging.yaml", "r") as f:
-    try:
-        contents = yaml.safe_load(f)
-    except yaml.YAMLError as e:
-        raise SomethingBroke(
-            e, message="Error loading logging config from logging.yaml"
-        )
-    logging.config.dictConfig(contents)
+# Logging enable
 logger = logging.getLogger(__name__)
 
 # Parser config
@@ -41,7 +32,9 @@ r = None
 
 # Establish API connection objects to FMC and Netbox
 fmc = AdderFMC()
+logging.debug("Connection to FMC established")
 nb = AdderNetbox()
+logging.debug("Connection to Netbox established")
 
 # Validate input; raise an exception if the site code provided is anything other than five letters.
 if validate_site_code(args.site):

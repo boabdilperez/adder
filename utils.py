@@ -1,4 +1,15 @@
 from __future__ import annotations
+import logging.config
+import yaml
+
+
+# Logging config
+with open("logging.yaml", "r") as f:
+    try:
+        contents = yaml.safe_load(f)
+    except yaml.YAMLError:
+        raise
+    logging.config.dictConfig(contents)
 
 
 class SomethingBroke(Exception):
@@ -37,4 +48,3 @@ def validate_site_code(site_code: str) -> bool:
         return True
     else:
         return False
-
