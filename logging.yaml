@@ -1,0 +1,21 @@
+version: 1
+formatters:
+  brief:
+    format: "{asctime} {levelname}: {message}"
+    style: "{"
+handlers:
+  ch:
+    class: logging.StreamHandler
+    formatter: brief
+    level: WARNING
+  fh:
+    class: logging.handlers.TimedRotatingFileHandler
+    formatter: brief
+    level: DEBUG
+    filename: adder.log
+    when: D
+    interval: 7
+    backupCount: 4
+loggers:
+  adder:
+    handlers: [ch, fh]
