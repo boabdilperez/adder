@@ -1,5 +1,6 @@
 from __future__ import annotations
-from utils import *
+
+# from utils import *
 from typing import Any
 from datetime import datetime, timedelta
 from getpass import getpass
@@ -39,7 +40,7 @@ class AdderFMC:
         try:
             _tokens: dict[str, str] = self.get_tokens()
         except REQUESTS_EXCEPTIONS as e:
-            logger.error(f"Failed to connect to FMC: ", e)
+            logger.error(f"Failed to connect to FMC: {e}")
             raise
 
         self.auth_token: str = _tokens["auth"]

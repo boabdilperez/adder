@@ -1,5 +1,6 @@
 from __future__ import annotations
-from utils import *
+
+# from utils import *
 from pynetbox.core.api import Api
 from pynetbox.models.ipam import Record
 from configparser import ConfigParser
