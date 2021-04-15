@@ -1,6 +1,5 @@
 from __future__ import annotations
-
-# from utils import *
+from utils import *
 from pynetbox.core.api import Api
 from pynetbox.models.ipam import Record
 from configparser import ConfigParser
@@ -34,7 +33,6 @@ class AdderNetbox(Api):
         for device in devices:
             dia_ips_masked.append(self.ipam.ip_addresses.get(device=device, interface="dia1").address)  # type: ignore
             dia_ips_masked.append(self.ipam.ip_addresses.get(device=device, interface="dia2").address)  # type: ignore
-
         dia_ips: list = [x[0:-3] for x in dia_ips_masked]
         return dia_ips
 

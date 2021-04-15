@@ -1,13 +1,12 @@
 from __future__ import annotations
+import logging
+import logging.config
+import yaml
 from utils import *
 from fmc import AdderFMC
 from netbox import AdderNetbox
 from pprint import pprint
 import argparse
-import logging
-import logging.config
-import yaml
-
 
 # Logging config
 with open("logging.yaml", "r") as f:
@@ -59,28 +58,3 @@ if validate_site_code(args.site):
     logger.debug("Checking IP overlap")
 else:
     raise SiteCodeError(args.site)
-
-# If the input validates, go ahead and create the network objects, then push them into the DIA object group.
-if not overlap:
-    new_objects = fmc.create_network_objects(dia_ips)
-    r = fmc.update_network_group(new_objects)
-else:
-    logger.error(f"Object group overlap with {dia_ips}")
-    raise SomethingBroke(
-        broke_thing=f"Object group overlap with {dia_ips}",
-        message="DIA IPs overlap with existing contents of DIA Object Group",
-    )
-
-# This block is kinda just for testing and debugging for now.
-if r.status_code >= 200 and r.status_code <= 299:
-    logging.debug("Object Group is updated with new site DIA IPs")
-    pprint(r.json()["items"])
-# If the FMC comes back with an HTTP status code that indicates anything other than success, we raise an error so the tech can investigate.
-else:
-    logger.error(
-        "Received Non-200 status code from FMC when attempting to update DIA object group"
-    )
-    raise SomethingBroke(
-        r.status_code,
-        message="Received Non-200 status code from FMC when attempting to update DIA object group",
-    )

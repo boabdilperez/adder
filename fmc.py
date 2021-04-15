@@ -1,6 +1,6 @@
 from __future__ import annotations
-
-# from utils import *
+from pprint import pprint
+from utils import *
 from typing import Any
 from datetime import datetime, timedelta
 from getpass import getpass
@@ -40,7 +40,7 @@ class AdderFMC:
         try:
             _tokens: dict[str, str] = self.get_tokens()
         except REQUESTS_EXCEPTIONS as e:
-            logger.error(f"Failed to connect to FMC: {e}")
+            logger.error(f"FMC_CONSTRUCTOR: Failed to connect to FMC: {e}")
             raise
 
         self.auth_token: str = _tokens["auth"]
@@ -204,60 +204,79 @@ class AdderFMC:
     def create_bulk_request_body(
         self, ip_addrs: list[str]
     ) -> list[dict[str, str | bool]]:
-        """Takes in a list of IP addresses and builds a json-serializable list of dictionaries out of the contents. This forms the request body to create new network objects."""
+        """Takes in a list of IP addresses and builds a json-serializable list of dictionaries out of the contents. This forms the request body to create new host objects."""
         request_body: list[dict[str, str | bool]] = []
         for addr in ip_addrs:
             request_body.append(
                 {
                     "name": addr,
                     "value": addr,
-                    "overridable": False,
                     "description": "Added via REST API",
-                    "type": "Network",
+                    "type": "Host",
                 }
             )
 
         return request_body
 
-    def create_network_objects(self, ip_addrs: list[str]) -> list[dict[str, str]]:
-        """Use the FMC API to create a new nework object; returns the UUIDs of
+    def create_host_objects(self, ip_addrs: list[str]) -> list[dict[str, str]]:
+        """Use the FMC API to create a new host object; returns the UUIDs of
         the created objects."""
-        uri: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}/object/networks"
+        uri: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}/object/hosts"
         new_objects: list[dict[str, str]] = []
 
         if len(ip_addrs) > 1:
+            logger.debug(
+                "CREATE_NET_OBJ: bulk flag true; multiple objects being created"
+            )
             multi_body: list[dict[str, str | bool]] = self.create_bulk_request_body(
                 ip_addrs
             )
             payload: dict[str, bool] = {"bulk": True}
+            logger.debug(
+                f"CREATE_NET_OBJ: URI: {uri}\n Body: {multi_body}\n Payload: {payload}"
+            )
             r: Response = self.post(uri, multi_body, payload)
         else:
+            logger.debug("CREAT_NET_OBJ: bulk flag not set")
             single_body: dict[str, str | bool] = {
                 "name": ip_addrs[0],
                 "value": ip_addrs[0],
-                "overridable": False,
                 "description": "Added via REST API",
-                "type": "network",
+                "type": "Host",
             }
             r: Response = self.post(uri, single_body)
 
-        for item in r.json()["items"]:
-            new_objects.append(
-                {"name": item["name"], "id": item["id"], "type": item["type"]}
-            )
+        if "items" in r.json().keys():
+            for item in r.json()["items"]:
+                new_objects.append(
+                    {"name": item["name"], "id": item["id"], "type": item["type"]}
+                )
+        else:
+            logger.error("CREAT_NET_OBJ: Error creating objects.")
+            pprint(r.json())
+            raise SomethingBroke(broke_thing=r, message="Failure to create objects")
 
         return new_objects
 
-    def update_network_group(
-        self, new_objects: list[dict[str, str]]
-    ) -> requests.Response:
-        """This method takes directly takes in the results of the create_network_objects function
-        and adds those new objects to the PROD DIA network group with the FMC API"""
-        uri: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}/object/networkgroups/{self.network_group_id}"
-        request_body: dict[str, Any] = {}
-        request_body["objects"] = new_objects
-        r: Response = self.put(uri, request_body)
-        return r
+    # def update_network_group(
+    #     self, new_objects: list[dict[str, str]]
+    # ) -> requests.Response:
+    #     """This method takes directly takes in the results of the create_host_objects function
+    #     and adds those new objects to the PROD DIA network group with the FMC API"""
+    #     uri: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}/object/networkgroups/{self.network_group_id}"
+    #     request_body: dict[str, Any] = {}
+    #     request_body["id"] = self.network_group_id
+    #     request_body["type"] = "NetworkGroup"
+    #     request_body["name"] = "Store-DIA-PROD"
+    #     request_body["objects"] = []
+    #     request_body["literals"] = []
+    #     logger.debug(f"UPDATE_NET_GRP: URI: {uri}\n BODY: {request_body}")
+    #     r: Response = self.put(uri, request_body)
+    #     if r.status_code >= 200 and r.status_code <= 299:
+    #         return r
+    #     else:
+    #         logger.error(f"UPDATE_NET_GRP: {r.text}")
+    #         raise SomethingBroke(r.status_code, message="Failed to update OBJ_GRP")
 
     def get_deployable_devices(self) -> list[dict[str, str]]:
         """Get a list of devices with config changes ready to be deployed from the FMC API"""

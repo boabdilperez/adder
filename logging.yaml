@@ -1,7 +1,7 @@
 version: 1
 formatters:
   brief:
-    format: "{asctime} {levelname}: {message}"
+    format: "{asctime} {levelname} {name}: {message}"
     style: "{"
 handlers:
   ch:
@@ -18,5 +18,11 @@ handlers:
     backupCount: 4
 loggers:
   __main__:
+    handlers: [ch, fh]
+    level: DEBUG
+  fmc:
+    handlers: [ch, fh]
+    level: DEBUG
+  netbox:
     handlers: [ch, fh]
     level: DEBUG
