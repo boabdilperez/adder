@@ -18,7 +18,6 @@ config.read("adder.conf")
 
 # Define Constants
 FMC_HOST: str = config["fmc"]["host"]
-THIRTY_MINUTES: timedelta = timedelta(minutes=30)
 DFW_FTD: str = config["fmc"]["dfw_ftd"]
 ORD_FTD: str = config["fmc"]["ord_ftd"]
 FMC_NETGRP_OBJ_UUID: str = config["fmc"]["network_group_uuid"]
@@ -72,6 +71,7 @@ class AdderFMC:
 
     def get_auth_header(self) -> dict[str, str]:
         if self.token_expire < datetime.now():
+            self.token_expire = datetime.now() + timedelta(minutes=30)
             return {
                 "X-auth-access-token": self.auth_token,
                 "X-auth-refresh-token": self.refresh_token,
@@ -246,7 +246,7 @@ class AdderFMC:
             }
             r: Response = self.post(uri, single_body)
 
-        if "items" in r.json().keys():
+        if 200 <= r.status_code <= 299:
             for item in r.json()["items"]:
                 new_objects.append(
                     {"name": item["name"], "id": item["id"], "type": item["type"]}
