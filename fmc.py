@@ -258,6 +258,9 @@ class AdderFMC:
 
         return new_objects
 
+    def update_network_group(self):
+        pass
+
     # def update_network_group(
     #     self, new_objects: list[dict[str, str]]
     # ) -> requests.Response:
@@ -296,36 +299,36 @@ class AdderFMC:
             )
         return response_data
 
-    def deploy_to_devices(self):
-        """Check to see if the two datacenter FTDs are in the list of devices with changes ready to go.
-        If so, deploy the pending changes from the FMC to the FTD clusters."""
-        uri: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}/deployment/deploymentrequests"
-        deployable_devices = self.get_deployable_devices()
-        dfw_response = None
-        ord_response = None
+    # def deploy_to_devices(self):
+    #     """Check to see if the two datacenter FTDs are in the list of devices with changes ready to go.
+    #     If so, deploy the pending changes from the FMC to the FTD clusters."""
+    #     uri: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}/deployment/deploymentrequests"
+    #     deployable_devices = self.get_deployable_devices()
+    #     dfw_response = None
+    #     ord_response = None
 
-        for device in deployable_devices:
-            if device["name"] == self.dfw_ftd:
-                dfw_body = {
-                    "type": "DeploymentRequest",
-                    "version": device["version"],
-                    "forceDeploy": True,
-                    "ignoreWarning": True,
-                    "deviceList": [
-                        device["id"],
-                    ],
-                }
-                dfw_response = self.post(uri, dfw_body)
-            if device["name"] == self.ord_ftd:
-                ord_body = {
-                    "type": "DeploymentRequest",
-                    "version": device["version"],
-                    "forceDeploy": True,
-                    "ignoreWarning": True,
-                    "deviceList": [
-                        device["id"],
-                    ],
-                }
-                ord_response = self.post(uri, ord_body)
+    #     for device in deployable_devices:
+    #         if device["name"] == self.dfw_ftd:
+    #             dfw_body = {
+    #                 "type": "DeploymentRequest",
+    #                 "version": device["version"],
+    #                 "forceDeploy": True,
+    #                 "ignoreWarning": True,
+    #                 "deviceList": [
+    #                     device["id"],
+    #                 ],
+    #             }
+    #             dfw_response = self.post(uri, dfw_body)
+    #         if device["name"] == self.ord_ftd:
+    #             ord_body = {
+    #                 "type": "DeploymentRequest",
+    #                 "version": device["version"],
+    #                 "forceDeploy": True,
+    #                 "ignoreWarning": True,
+    #                 "deviceList": [
+    #                     device["id"],
+    #                 ],
+    #             }
+    #             ord_response = self.post(uri, ord_body)
 
-        return dfw_response, ord_response
+    #     return dfw_response, ord_response
