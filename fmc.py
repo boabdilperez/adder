@@ -5,7 +5,6 @@ from typing import Any
 from datetime import datetime, timedelta
 from getpass import getpass
 from configparser import ConfigParser
-from requests.models import Response
 import requests
 import logging
 
@@ -20,7 +19,7 @@ config.read("adder.conf")
 FMC_HOST: str = config["fmc"]["host"]
 DFW_FTD: str = config["fmc"]["dfw_ftd"]
 ORD_FTD: str = config["fmc"]["ord_ftd"]
-FMC_NETGRP_OBJ_UUID: str = config["fmc"]["network_group_uuid"]
+FMC_DIA_NETGRP_OBJ_UUID: str = config["fmc"]["dia_network_group_uuid"]
 REQUESTS_EXCEPTIONS = (
     requests.RequestException,
     requests.ConnectionError,
@@ -46,7 +45,7 @@ class AdderFMC:
         self.refresh_token: str = _tokens["refresh"]
         self.domain_uuid: str = _tokens["domain_uuid"]
         self.token_expire: datetime = datetime.now() + timedelta(minutes=30)
-        self.network_group_id = FMC_NETGRP_OBJ_UUID
+        self.dia_network_group_uuid = FMC_DIA_NETGRP_OBJ_UUID
         self.dfw_ftd: str = DFW_FTD
         self.ord_ftd: str = ORD_FTD
 
@@ -57,7 +56,7 @@ class AdderFMC:
         return creds
 
     def get_tokens(self) -> dict[str, str]:
-        r: Response = requests.post(
+        r: requests.Response = requests.post(
             f"{self.host}/api/fmc_platform/v1/auth/generatetoken",
             auth=self._creds,
             verify=False,
@@ -89,7 +88,7 @@ class AdderFMC:
         """Wraps a requests.get method call in the formatting necessary to talk to FMC API"""
 
         if url is not None:
-            r: Response = requests.get(
+            r: requests.Response = requests.get(
                 url,
                 headers=self.get_auth_header(),
                 params=payload,
@@ -98,7 +97,7 @@ class AdderFMC:
             )
             return r
         else:
-            r: Response = requests.get(
+            r: requests.Response = requests.get(
                 f"{self.host}{uri}",
                 params=payload,
                 headers=self.get_auth_header(),
@@ -117,7 +116,7 @@ class AdderFMC:
         """Wraps a requests.post method call in the formatting necessary to talk to FMC API"""
 
         if url is not None:
-            r: Response = requests.post(
+            r: requests.Response = requests.post(
                 url,
                 headers=self.get_auth_header(),
                 params=payload,
@@ -126,7 +125,7 @@ class AdderFMC:
             )
             return r
         else:
-            r: Response = requests.post(
+            r: requests.Response = requests.post(
                 f"{self.host}{uri}",
                 headers=self.get_auth_header(),
                 params=payload,
@@ -145,7 +144,7 @@ class AdderFMC:
         """Wraps a requests.put method call in the formatting necessary to talk to FMC API"""
 
         if url is not None:
-            r: Response = requests.put(
+            r: requests.Response = requests.put(
                 url,
                 headers=self.get_auth_header(),
                 params=payload,
@@ -154,7 +153,7 @@ class AdderFMC:
             )
             return r
         else:
-            r: Response = requests.put(
+            r: requests.Response = requests.put(
                 f"{self.host}{uri}",
                 headers=self.get_auth_header(),
                 params=payload,
@@ -163,17 +162,24 @@ class AdderFMC:
             )
             return r
 
-    def get_netgrp_ips(self) -> list[str]:
-        """API request to the FMC API to grab all of the objects in the DIA IP PROD network group,
-        parse out the names, return as list."""
-        uri: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}/object/networkgroups/{self.network_group_id}"
-        r: Response = self.get(uri)
+    def get_network_group(self, net_grp_id: str) -> requests.Response:
+        """FMC API GET request to grab the representation of an object group. Needs the UUID of the object group and returns the http response if it's in the 200 range."""
+        uri: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}/object/networkgroups/{net_grp_id}"
+        r: requests.Response = self.get(uri)
+        if 200 <= r.status_code <= 299:
+            return self.get(uri)
+        else:
+            raise StatusCodeError(r.status_code, r.text)
+
+    def get_netgrp_ips(self, network_group_object: requests.Response) -> list[str]:
+        """This helper function parses out the individual objects and literals from the return of a GET on a network object group;
+        returns a string of obj names and literal IPs"""
         ips_in_netgrp: list[str] = []
 
-        for each_object in r.json()["objects"]:
+        for each_object in network_group_object.json()["objects"]:
             ips_in_netgrp.append(each_object["name"])
 
-        for each_object in r.json()["literals"]:
+        for each_object in network_group_object.json()["literals"]:
             ips_in_netgrp.append(each_object["value"])
 
         return ips_in_netgrp
@@ -188,7 +194,7 @@ class AdderFMC:
         payload: dict[str, int] | None = {"limit": 1000}
 
         while True:
-            r: Response = self.get(uri, payload, url)
+            r: requests.Response = self.get(uri, payload, url)
 
             for item in r.json()["items"]:
                 all_hosts[item["name"]] = item["links"]["self"]
@@ -235,7 +241,7 @@ class AdderFMC:
             logger.debug(
                 f"CREATE_NET_OBJ: URI: {uri}\n Body: {multi_body}\n Payload: {payload}"
             )
-            r: Response = self.post(uri, multi_body, payload)
+            r: requests.Response = self.post(uri, multi_body, payload)
         else:
             logger.debug("CREAT_NET_OBJ: bulk flag not set")
             single_body: dict[str, str | bool] = {
@@ -244,7 +250,7 @@ class AdderFMC:
                 "description": "Added via REST API",
                 "type": "Host",
             }
-            r: Response = self.post(uri, single_body)
+            r: requests.Response = self.post(uri, single_body)
 
         if 200 <= r.status_code <= 299:
             for item in r.json()["items"]:
@@ -258,46 +264,43 @@ class AdderFMC:
 
         return new_objects
 
-    def update_network_group(self):
-        pass
+    def update_dia_network_group(
+        self, new_objects: list[dict[str, str]]
+    ) -> requests.Response:
+        """This function needs to take in a list of new objects to add into an object group,
+        retrieve the existing object group, append the new data to it, and return it to the API via a PUT request."""
+        uri = f"/api/fmc_config/v1/domain/{self.domain_uuid}/object/networkgroups/{self.dia_network_group_uuid}"
 
-    # def update_network_group(
-    #     self, new_objects: list[dict[str, str]]
-    # ) -> requests.Response:
-    #     """This method takes directly takes in the results of the create_host_objects function
-    #     and adds those new objects to the PROD DIA network group with the FMC API"""
-    #     uri: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}/object/networkgroups/{self.network_group_id}"
-    #     request_body: dict[str, Any] = {}
-    #     request_body["id"] = self.network_group_id
-    #     request_body["type"] = "NetworkGroup"
-    #     request_body["name"] = "Store-DIA-PROD"
-    #     request_body["objects"] = []
-    #     request_body["literals"] = []
-    #     logger.debug(f"UPDATE_NET_GRP: URI: {uri}\n BODY: {request_body}")
-    #     r: Response = self.put(uri, request_body)
-    #     if r.status_code >= 200 and r.status_code <= 299:
-    #         return r
-    #     else:
-    #         logger.error(f"UPDATE_NET_GRP: {r.text}")
-    #         raise SomethingBroke(r.status_code, message="Failed to update OBJ_GRP")
+        original_network_grp = self.get_network_group(self.dia_network_group_uuid)
+        modified_obj_group = original_network_grp.json()
+        modified_obj_group.pop("metadata", None)
+        modified_obj_group.pop("links", None)
 
-    def get_deployable_devices(self) -> list[dict[str, str]]:
+        for object in new_objects:
+            modified_obj_group["objects"].append(object)
+
+        r: requests.Response = self.put(uri, modified_obj_group)
+        if 200 <= r.status_code <= 299:
+            return r
+        else:
+            raise StatusCodeError(
+                r.status_code, message="API failure to update DIA object group"
+            )
+
+    def get_deployable_devices(self) -> requests.Response:
         """Get a list of devices with config changes ready to be deployed from the FMC API"""
         payload: dict[str, bool] = {"expanded": True}
-        response_data: list[dict[str, str]] = []
         uri: str = (
             f"/api/fmc_config/v1/domain/{self.domain_uuid}/deployment/deployabledevices"
         )
-        r: Response = self.get(uri, payload)
-        for item in r.json()["items"]:
-            response_data.append(
-                {
-                    "name": item["name"],
-                    "id": item["device"]["id"],
-                    "version": item["version"],
-                }
+        r: requests.Response = self.get(uri, payload)
+
+        if 200 <= r.status_code <= 299:
+            return r
+        else:
+            raise StatusCodeError(
+                r.status_code, message="API Failure to get deployable devices"
             )
-        return response_data
 
     # def deploy_to_devices(self):
     #     """Check to see if the two datacenter FTDs are in the list of devices with changes ready to go.

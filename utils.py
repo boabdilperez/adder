@@ -22,6 +22,15 @@ class SiteCodeError(SomethingBroke):
         super().__init__(self.site_code, self.message)
 
 
+class StatusCodeError(SomethingBroke):
+    """Exception to raise when an API returns an HTTP status code that indicates an error in the request"""
+
+    def __init__(self, status_code, message="HTTP status code indicates API error"):
+        self.status_code = status_code
+        self.message = message
+        super().__init__(self.status_code, self.message)
+
+
 def check_ip_overlap(network_group_ips: list[str], dia_ips: list[str]) -> bool:
     """Compare a set of IPs against a set of IPs from a network group to see if the existing group contains the IPs. Return True if there's an overlap. We'll use this to gate actually
     sending a put request to the FMC for changing the network group."""

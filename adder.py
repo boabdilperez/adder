@@ -51,7 +51,9 @@ if validate_site_code(args.site):
     dia_ips = nb.get_dia_ip_addrs(site_code=args.site.lower())
     logger.debug(f"DIA IPs obtained: {dia_ips}")
 
-    existing_netgrp_ips = fmc.get_netgrp_ips()
+    existing_netgrp_ips = fmc.get_netgrp_ips(
+        fmc.get_network_group(fmc.dia_network_group_uuid)
+    )
     logger.debug("Grabbed list of IPs from FMC")
 
     overlap = check_ip_overlap(existing_netgrp_ips, dia_ips)
