@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "a44ad07c4ac22e6fbbf2039d6839b895523ffc86c6f3c4796b3bcc5a6c862550"
+            "sha256": "7d13874228a72d83652448a3226ccc1de5232e5a834b943785a9830a3252d677"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -41,11 +41,11 @@
         },
         "pynetbox": {
             "hashes": [
-                "sha256:342ae328d02920cd4da101d7f75f0f85c4a2e291b517019151a39ad17dd8fa0a",
-                "sha256:ef2d8175eca1a67feedd27cbeef650c95a8eb8387811f67f3b6db3a634678ffb"
+                "sha256:4c1ff255613af552aa1a905b0f402859d27272fe14575f5cbb9463408a23c4df",
+                "sha256:ea814635157a0d0618c5e4340c56379f8ae02ef2b30600d13b910825dd0bacac"
             ],
             "index": "pypi",
-            "version": "==6.1.1"
+            "version": "==6.1.2"
         },
         "pyyaml": {
             "hashes": [
@@ -130,6 +130,14 @@
             "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
             "version": "==7.1.2"
         },
+        "colorama": {
+            "hashes": [
+                "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b",
+                "sha256:9f47eda37229f68eee03b24b9748937c7dc3868f906e8ba69fbcbdd3bc5dc3e2"
+            ],
+            "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
+            "version": "==0.4.4"
+        },
         "mypy-extensions": {
             "hashes": [
                 "sha256:090fedd75945a69ae91ce1303b5824f428daf5a028d2f6ab8a299250a846f15d",
@@ -143,6 +151,14 @@
                 "sha256:aa0cb481c4041bf52ffa7b0d8fa6cd3e88a2ca4879c533c9153882ee2556790d"
             ],
             "version": "==0.8.1"
+        },
+        "pretty-errors": {
+            "hashes": [
+                "sha256:87fd3071dbc302c9064f5b9a6114ea1678dda6ace70cbcd1452e46661af408e6",
+                "sha256:b37b8a84634e9e6294273926e9cdea99414390e9a329293d018a1b4bbe8e2aa7"
+            ],
+            "index": "pypi",
+            "version": "==1.2.19"
         },
         "regex": {
             "hashes": [

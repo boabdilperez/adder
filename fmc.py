@@ -1,12 +1,15 @@
 from __future__ import annotations
-from pprint import pprint
 from utils import *
 from typing import Any
 from datetime import datetime, timedelta
 from getpass import getpass
 from configparser import ConfigParser
+from pprint import pprint
+import json
 import requests
 import logging
+import uuid
+
 
 # Logging enable
 logger = logging.getLogger(__name__)
@@ -19,7 +22,6 @@ config.read("adder.conf")
 FMC_HOST: str = config["fmc"]["host"]
 DFW_FTD: str = config["fmc"]["dfw_ftd"]
 ORD_FTD: str = config["fmc"]["ord_ftd"]
-FMC_DIA_NETGRP_OBJ_UUID: str = config["fmc"]["dia_network_group_uuid"]
 REQUESTS_EXCEPTIONS = (
     requests.RequestException,
     requests.ConnectionError,
@@ -45,38 +47,9 @@ class AdderFMC:
         self.refresh_token: str = _tokens["refresh"]
         self.domain_uuid: str = _tokens["domain_uuid"]
         self.token_expire: datetime = datetime.now() + timedelta(minutes=30)
-        self.dia_network_group_uuid = FMC_DIA_NETGRP_OBJ_UUID
         self.dfw_ftd: str = DFW_FTD
         self.ord_ftd: str = ORD_FTD
-
-    def get_creds(self) -> tuple[str, str]:
-        username: str = input("ADM User: ")
-        password: str = getpass(prompt="Password: ")
-        creds: tuple[str, str] = (username, password)
-        return creds
-
-    def get_tokens(self) -> dict[str, str]:
-        r: requests.Response = requests.post(
-            f"{self.host}/api/fmc_platform/v1/auth/generatetoken",
-            auth=self._creds,
-            verify=False,
-        )
-        tokens: dict[str, str] = {
-            "auth": r.headers["X-auth-access-token"],
-            "refresh": r.headers["X-auth-refresh-token"],
-            "domain_uuid": r.headers["DOMAIN_UUID"],
-        }
-        return tokens
-
-    def get_auth_header(self) -> dict[str, str]:
-        if self.token_expire < datetime.now():
-            self.token_expire = datetime.now() + timedelta(minutes=30)
-            return {
-                "X-auth-access-token": self.auth_token,
-                "X-auth-refresh-token": self.refresh_token,
-            }
-        else:
-            return {"X-auth-access-token": self.auth_token}
+        self.uri_base: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}"
 
     def get(
         self,
@@ -95,7 +68,10 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
-            return r
+            if 200 <= r.status_code <= 299:
+                return r
+            else:
+                raise StatusCodeError(r.status_code, r.text)
         else:
             r: requests.Response = requests.get(
                 f"{self.host}{uri}",
@@ -104,7 +80,10 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
-            return r
+            if 200 <= r.status_code <= 299:
+                return r
+            else:
+                raise StatusCodeError(r.status_code, r.text)
 
     def post(
         self,
@@ -123,7 +102,10 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
-            return r
+            if 200 <= r.status_code <= 299:
+                return r
+            else:
+                raise StatusCodeError(r.status_code, r.text)
         else:
             r: requests.Response = requests.post(
                 f"{self.host}{uri}",
@@ -132,7 +114,10 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
-            return r
+            if 200 <= r.status_code <= 299:
+                return r
+            else:
+                raise StatusCodeError(r.status_code, r.text)
 
     def put(
         self,
@@ -151,7 +136,10 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
-            return r
+            if 200 <= r.status_code <= 299:
+                return r
+            else:
+                raise StatusCodeError(r.status_code, r.text)
         else:
             r: requests.Response = requests.put(
                 f"{self.host}{uri}",
@@ -160,16 +148,93 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
-            return r
+            if 200 <= r.status_code <= 299:
+                return r
+            else:
+                raise StatusCodeError(r.status_code, r.text)
 
-    def get_network_group(self, net_grp_id: str) -> requests.Response:
-        """FMC API GET request to grab the representation of an object group. Needs the UUID of the object group and returns the http response if it's in the 200 range."""
-        uri: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}/object/networkgroups/{net_grp_id}"
-        r: requests.Response = self.get(uri)
-        if 200 <= r.status_code <= 299:
-            return self.get(uri)
+    def get_all_hosts(self) -> dict[str, str]:
+        """Returns a dictionary with object names as keys, and their UUIDs as values"""
+        all_hosts: dict[str, str] = {}
+        url: str | None = None
+        uri: str = f"{self.uri_base}/object/networkaddresses"
+        payload: dict[str, int] | None = {"limit": 1000}
+
+        while True:
+            try:
+                r: requests.Response = self.get(uri, payload, url)
+            except StatusCodeError as e:
+                logger.error(f"Error retrieving list of network addresses: {e}")
+                raise
+
+            for item in r.json()["items"]:
+                all_hosts[item["name"]] = item["id"]
+
+            if "next" in r.json()["paging"].keys():
+                url = r.json()["paging"]["next"][0]
+                payload = None
+            else:
+                break
+
+        return all_hosts
+
+    def get_auth_header(self) -> dict[str, str]:
+        """Checks the current time against the predicted expiry of the auth token.
+        Returns a dict with the correct formatted authentication header for a Requests API call against the FMC"""
+        if self.token_expire < datetime.now():
+            self.token_expire = datetime.now() + timedelta(minutes=30)
+            return {
+                "X-auth-access-token": self.auth_token,
+                "X-auth-refresh-token": self.refresh_token,
+            }
         else:
-            raise StatusCodeError(r.status_code, r.text)
+            return {"X-auth-access-token": self.auth_token}
+
+    def get_creds(self) -> tuple[str, str]:
+        """Retrieve ADM username and password from the user"""
+        username: str = input("ADM User: ")
+        password: str = getpass(prompt="Password: ")
+        creds: tuple[str, str] = (username, password)
+        return creds
+
+    def get_deployable_devices(self) -> requests.Response:
+        """Get a list of devices with config changes ready to be deployed from the FMC API"""
+        payload: dict[str, bool | int] = {"expanded": True, "limit": 100}
+        uri: str = f"{self.uri_base}/deployment/deployabledevices"
+        try:
+            r: requests.Response = self.get(uri, payload)
+        except StatusCodeError as e:
+            logger.error(f"Error retrieving list of deployable devices: {e}")
+            raise
+
+        return r
+
+    def get_host_by_name(self, name: str) -> requests.Response:
+        uri: str = f"{self.uri_base}/object/networkaddresses"
+        url: str | None = None
+        payload: dict[str, int] | None = {"limit": 1000}
+        r: requests.Response = self.get(uri, payload)
+
+        while True:
+            try:
+                r: requests.Response = self.get(uri, payload, url)
+            except StatusCodeError as e:
+                logger.error(f"Error retreiving info for specific host: {name}")
+                raise
+
+            for item in r.json()["items"]:
+                if item["name"] == name:
+                    return self.get_host_by_uuid(item["id"])
+            else:
+                if "next" in r.json()["paging"].keys():
+                    url = r.json()["paging"]["next"][0]
+                    payload = None
+                else:
+                    raise HostNotFoundWarning(name)
+
+    def get_host_by_uuid(self, uuid: str) -> requests.Response:
+        uri = f"{self.uri_base}/object/hosts/{uuid}"
+        return self.get(uri)
 
     def get_netgrp_ips(self, network_group_object: requests.Response) -> list[str]:
         """This helper function parses out the individual objects and literals from the return of a GET on a network object group;
@@ -184,28 +249,72 @@ class AdderFMC:
 
         return ips_in_netgrp
 
-    def get_all_hosts(self) -> dict[str, str]:
-        """Returns a dictionary with object names as keys, and their resource URLs as values"""
-        all_hosts: dict[str, str] = {}
-        url: str | None = None
-        uri: str = (
-            f"/api/fmc_config/v1/domain/{self.domain_uuid}/object/networkaddresses"
-        )
-        payload: dict[str, int] | None = {"limit": 1000}
+    def get_netgroup_by_name(self, name: str) -> requests.Response | None:
+        """Searches for the network object group named in the args, returns the HTTP response if it's in the 200-299 range."""
+        uri: str = f"{self.uri_base}/object/networkgroups"
+        r: requests.Response = self.get(uri)
 
-        while True:
-            r: requests.Response = self.get(uri, payload, url)
-
+        found = False
+        while not found:
             for item in r.json()["items"]:
-                all_hosts[item["name"]] = item["links"]["self"]
-
-            if "next" in r.json()["paging"].keys():
-                url = r.json()["paging"]["next"][0]
-                payload = None
+                if item["name"] == name:
+                    found = True
+                    return self.get_netgroup_by_uuid(item["id"])
             else:
-                break
+                if "next" in r.json()["paging"]:
+                    url = r.json()["paging"]["next"][0]
+                    r: requests.Response = self.get(uri, url)
+                else:
+                    return None
 
-        return all_hosts
+    def get_netgroup_by_uuid(self, net_grp_id: str) -> requests.Response:
+        """FMC API GET request to grab the representation of an object group. Needs the UUID of the object group and returns the http response if it's in the 200 range."""
+        uri: str = f"{self.uri_base}/object/networkgroups/{net_grp_id}"
+        try:
+            r: requests.Response = self.get(uri)
+        except StatusCodeError as e:
+            logger.error(f"Error retreiving network group: {e}")
+            raise
+
+        # if "next" not in r.json()["paging"].keys():
+        return r
+        # else:
+        #     raise SomethingBroke(
+        #         r.text,
+        #         message="Size of HTTP response is too big. Implement pagination.",
+        #     )
+
+    def get_netgroup_uuid(self, name: str) -> str | None:
+        """Searches for the network object group named in the args, returns object's UUID if it's in the 200-299 range."""
+        uri: str = f"{self.uri_base}/object/networkgroups"
+        r: requests.Response = self.get(uri)
+
+        found = False
+        while not found:
+            for item in r.json()["items"]:
+                if item["name"] == name:
+                    found = True
+                    return item["id"]
+            else:
+                if "next" in r.json()["paging"]:
+                    url = r.json()["paging"]["next"][0]
+                    r: requests.Response = self.get(uri, url)
+                else:
+                    return None
+
+    def get_tokens(self) -> dict[str, str]:
+        """API request to the FMC API to authenticate user and return the tokens necessary for further, authenticated, API calls."""
+        r: requests.Response = requests.post(
+            f"{self.host}/api/fmc_platform/v1/auth/generatetoken",
+            auth=self._creds,
+            verify=False,
+        )
+        tokens: dict[str, str] = {
+            "auth": r.headers["X-auth-access-token"],
+            "refresh": r.headers["X-auth-refresh-token"],
+            "domain_uuid": r.headers["DOMAIN_UUID"],
+        }
+        return tokens
 
     def create_bulk_request_body(
         self, ip_addrs: list[str]
@@ -225,10 +334,17 @@ class AdderFMC:
         return request_body
 
     def create_host_objects(self, ip_addrs: list[str]) -> list[dict[str, str]]:
-        """Use the FMC API to create a new host object; returns the UUIDs of
+        """Use the FMC API to create a new host object; returns the json representation of
         the created objects."""
-        uri: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}/object/hosts"
+        uri: str = f"{self.uri_base}/object/hosts"
         new_objects: list[dict[str, str]] = []
+
+        try:
+            for addr in ip_addrs:
+                self.check_host_exists(addr)
+        except HostAlreadyExistsWarning:
+            logger.warning(f"Host already exists on FMC")
+            raise
 
         if len(ip_addrs) > 1:
             logger.debug(
@@ -241,7 +357,11 @@ class AdderFMC:
             logger.debug(
                 f"CREATE_NET_OBJ: URI: {uri}\n Body: {multi_body}\n Payload: {payload}"
             )
-            r: requests.Response = self.post(uri, multi_body, payload)
+            try:
+                r: requests.Response = self.post(uri, multi_body, payload)
+            except StatusCodeError as e:
+                logger.error(f"Error creating host object: {e}")
+                raise
         else:
             logger.debug("CREAT_NET_OBJ: bulk flag not set")
             single_body: dict[str, str | bool] = {
@@ -250,88 +370,103 @@ class AdderFMC:
                 "description": "Added via REST API",
                 "type": "Host",
             }
-            r: requests.Response = self.post(uri, single_body)
+            try:
+                r: requests.Response = self.post(uri, single_body)
+            except StatusCodeError as e:
+                logger.error(f"Error creating host object: {e}")
+                raise
 
-        if 200 <= r.status_code <= 299:
-            for item in r.json()["items"]:
-                new_objects.append(
-                    {"name": item["name"], "id": item["id"], "type": item["type"]}
-                )
-        else:
-            logger.error("CREAT_NET_OBJ: Error creating objects.")
-            pprint(r.json())
-            raise SomethingBroke(broke_thing=r, message="Failure to create objects")
+        for item in r.json()["items"]:
+            new_objects.append(
+                {"name": item["name"], "id": item["id"], "type": item["type"]}
+            )
 
         return new_objects
 
-    def update_dia_network_group(
-        self, new_objects: list[dict[str, str]]
+    def update_group_from_existing_host(
+        self, group_uuid: str, host_name: str
+    ) -> requests.Response:
+        new_obj = []
+        existing_host = self.get_host_by_name(host_name).json()
+        existing_host.pop("links")
+        existing_host.pop("metadata")
+        existing_host.pop("value")
+
+        new_obj.append(existing_host)
+        return self.update_object_group(group_uuid, new_obj)
+
+    def update_object_group(
+        self, group_uuid: str, new_objects: list[dict[str, str]]
     ) -> requests.Response:
         """This function needs to take in a list of new objects to add into an object group,
-        retrieve the existing object group, append the new data to it, and return it to the API via a PUT request."""
-        uri = f"/api/fmc_config/v1/domain/{self.domain_uuid}/object/networkgroups/{self.dia_network_group_uuid}"
+        retrieve the existing object group, append the new data to it, and return it to the API via a PUT request.
+        We also grab a backup of the object-group being modified and dump it into a file for use by a rollback method."""
+        uri = f"{self.uri_base}/object/networkgroups/{group_uuid}"
 
-        original_network_grp = self.get_network_group(self.dia_network_group_uuid)
-        modified_obj_group = original_network_grp.json()
+        original_network_grp = self.get_netgroup_by_uuid(group_uuid).json()
+        modified_obj_group = original_network_grp.copy()
         modified_obj_group.pop("metadata", None)
         modified_obj_group.pop("links", None)
+
+        original_network_grp.update({"backup_timestamp": str(datetime.now())})
+        original_network_grp.update({"backup_uuid": str(uuid.uuid1())})
 
         for object in new_objects:
             modified_obj_group["objects"].append(object)
 
-        r: requests.Response = self.put(uri, modified_obj_group)
-        if 200 <= r.status_code <= 299:
-            return r
-        else:
-            raise StatusCodeError(
-                r.status_code, message="API failure to update DIA object group"
+        try:
+            with open(f"{original_network_grp['backup_uuid']}.json", "w") as backup:
+                json.dump(original_network_grp, backup)
+            r: requests.Response = self.put(uri, modified_obj_group)
+        except StatusCodeError as e:
+            logger.error(f"Error writing data to object group: {e}")
+            raise
+
+        return r
+
+    def deploy_to_device(self, device_name: str):
+        """API request to FMC. Takes in a device name as an argument and pushes the changes pending for that device."""
+        uri: str = f"{self.uri_base}/deployment/deploymentrequests"
+        body = {
+            "type": "DeploymentRequest",
+            "version": None,
+            "forceDeploy": True,
+            "ignoreWarning": True,
+            "description": "Deployment initiated by API with Adder",
+            "deviceList": [],
+        }
+
+        found = False
+        deployable_devices = self.get_deployable_devices()
+        for device in deployable_devices.json()["items"]:
+            if device["name"] == device_name:
+                body["version"] = device["version"]
+                body["deviceList"].append(device["device"]["id"])
+                found = True
+                break
+
+        if found == False:
+            raise FirewallNotDeployableWarning(
+                device_name, message=f"FTD {device_name} is not in a deployable state."
             )
 
-    def get_deployable_devices(self) -> requests.Response:
-        """Get a list of devices with config changes ready to be deployed from the FMC API"""
-        payload: dict[str, bool] = {"expanded": True}
-        uri: str = (
-            f"/api/fmc_config/v1/domain/{self.domain_uuid}/deployment/deployabledevices"
-        )
-        r: requests.Response = self.get(uri, payload)
-
-        if 200 <= r.status_code <= 299:
-            return r
-        else:
-            raise StatusCodeError(
-                r.status_code, message="API Failure to get deployable devices"
+        try:
+            r: requests.Response = self.post(uri, body)
+        except StatusCodeError as e:
+            logger.error(
+                f"Error making API request to deploy pending changes to the FTD: {e}"
             )
+            raise
 
-    # def deploy_to_devices(self):
-    #     """Check to see if the two datacenter FTDs are in the list of devices with changes ready to go.
-    #     If so, deploy the pending changes from the FMC to the FTD clusters."""
-    #     uri: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}/deployment/deploymentrequests"
-    #     deployable_devices = self.get_deployable_devices()
-    #     dfw_response = None
-    #     ord_response = None
+        return r
 
-    #     for device in deployable_devices:
-    #         if device["name"] == self.dfw_ftd:
-    #             dfw_body = {
-    #                 "type": "DeploymentRequest",
-    #                 "version": device["version"],
-    #                 "forceDeploy": True,
-    #                 "ignoreWarning": True,
-    #                 "deviceList": [
-    #                     device["id"],
-    #                 ],
-    #             }
-    #             dfw_response = self.post(uri, dfw_body)
-    #         if device["name"] == self.ord_ftd:
-    #             ord_body = {
-    #                 "type": "DeploymentRequest",
-    #                 "version": device["version"],
-    #                 "forceDeploy": True,
-    #                 "ignoreWarning": True,
-    #                 "deviceList": [
-    #                     device["id"],
-    #                 ],
-    #             }
-    #             ord_response = self.post(uri, ord_body)
-
-    #     return dfw_response, ord_response
+    def check_host_exists(self, host: str) -> bool:
+        """Match names of proposed object against the list of all net object names in the fmc"""
+        all_hosts = self.get_all_hosts()
+        for name in all_hosts:
+            if name == host:
+                logger.warning(
+                    f"The name of the host object {host} already exists on the FMC"
+                )
+                raise HostAlreadyExistsWarning(host)
+        return True
