@@ -61,6 +61,7 @@ class AdderFMC:
         """Wraps a requests.get method call in the formatting necessary to talk to FMC API"""
 
         if url is not None:
+            logger.debug(f"GET decision: {url} is not None")
             r: requests.Response = requests.get(
                 url,
                 headers=self.get_auth_header(),
@@ -73,6 +74,7 @@ class AdderFMC:
             else:
                 raise StatusCodeError(r.status_code, r.text)
         else:
+            logger.debug(f"GET decision: {url} is else")
             r: requests.Response = requests.get(
                 f"{self.host}{uri}",
                 params=payload,
@@ -259,11 +261,13 @@ class AdderFMC:
             for item in r.json()["items"]:
                 if item["name"] == name:
                     found = True
+                    logger.debug(f"Item with matching name found: {item['id']}")
                     return self.get_netgroup_by_uuid(item["id"])
             else:
                 if "next" in r.json()["paging"]:
                     url = r.json()["paging"]["next"][0]
-                    r: requests.Response = self.get(uri, url)
+                    logger.debug(f"URL for request built: {url}")
+                    r: requests.Response = self.get(uri, url=url)
                 else:
                     return None
 
@@ -298,7 +302,7 @@ class AdderFMC:
             else:
                 if "next" in r.json()["paging"]:
                     url = r.json()["paging"]["next"][0]
-                    r: requests.Response = self.get(uri, url)
+                    r: requests.Response = self.get(uri, url=url)
                 else:
                     return None
 
