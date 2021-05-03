@@ -16,6 +16,19 @@ Details are fed to adder via command-line flags, and the app parses the argument
 
 * --target overrides the destination object group for the automated update. By default the "Store-DIA-PROD" object group is the one updated on the FMC. If a string is fed as an argument to --target the app will attempt to find that object group and update it instead.
 
+## Examples:
+
+* Add the DIA IP addresses for the swqry store to the FMC and deploy the changes to the DFW/ORD Firewalls:
+```
+adder --site swqry --deploy
+```
+
+* Add two IP addresses to the 'adder_test' object group, but don't deploy anything:
+```
+adder --ip 169.254.100.100 169.254.200.200 --target adder_test
+```
+
+
 ## Upcoming Capabilities:
 * Automatic update of SROS routers
 * Automatic update of Salt-Master firewalls
