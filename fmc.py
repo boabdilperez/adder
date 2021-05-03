@@ -415,10 +415,10 @@ class AdderFMC:
                 json.dump(obj_group, backup)
         except:
             logger.error(f"Error creating backup of {obj_group}")
-        obj_group.pop("metadata", None)
-        obj_group.pop("links", None)
-        obj_group.pop("backup_timestamp", None)
-        obj_group.pop("backup_uuid", None)
+        obj_group.pop("metadata")
+        obj_group.pop("links")
+        obj_group.pop("backup_timestamp")
+        obj_group.pop("backup_uuid")
 
         for object in new_objects:
             obj_group["objects"].append(object)
