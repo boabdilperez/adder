@@ -407,21 +407,24 @@ class AdderFMC:
         We also grab a backup of the object-group being modified and dump it into a file for use by a rollback method."""
         uri = f"{self.uri_base}/object/networkgroups/{group_uuid}"
 
-        original_network_grp = self.get_netgroup_by_uuid(group_uuid).json()
-        modified_obj_group = original_network_grp.copy()
-        modified_obj_group.pop("metadata", None)
-        modified_obj_group.pop("links", None)
-
-        original_network_grp.update({"backup_timestamp": str(datetime.now())})
-        original_network_grp.update({"backup_uuid": str(uuid.uuid1())})
+        obj_group = self.get_netgroup_by_uuid(group_uuid).json()
+        obj_group.update({"backup_timestamp": str(datetime.now())})
+        obj_group.update({"backup_uuid": str(uuid.uuid1())})
+        try:
+            with open(f"{obj_group['backup_uuid']}.json", "w") as backup:
+                json.dump(obj_group, backup)
+        except:
+            logger.error(f"Error creating backup of {obj_group}")
+        obj_group.pop("metadata", None)
+        obj_group.pop("links", None)
+        obj_group.pop("backup_timestamp", None)
+        obj_group.pop("backup_uuid", None)
 
         for object in new_objects:
-            modified_obj_group["objects"].append(object)
+            obj_group["objects"].append(object)
 
         try:
-            with open(f"{original_network_grp['backup_uuid']}.json", "w") as backup:
-                json.dump(original_network_grp, backup)
-            r: requests.Response = self.put(uri, modified_obj_group)
+            r: requests.Response = self.put(uri, obj_group)
         except StatusCodeError as e:
             logger.error(f"Error writing data to object group: {e}")
             raise
