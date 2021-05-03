@@ -50,6 +50,7 @@ class AdderFMC:
         self.dfw_ftd: str = DFW_FTD
         self.ord_ftd: str = ORD_FTD
         self.uri_base: str = f"/api/fmc_config/v1/domain/{self.domain_uuid}"
+        logger.debug("Connection to FMC established")
 
     def get(
         self,
@@ -61,7 +62,7 @@ class AdderFMC:
         """Wraps a requests.get method call in the formatting necessary to talk to FMC API"""
 
         if url is not None:
-            logger.debug(f"GET decision: {url} is not None")
+            logger.debug(f"GET decision: overriding GET request with {url}")
             r: requests.Response = requests.get(
                 url,
                 headers=self.get_auth_header(),
@@ -74,7 +75,7 @@ class AdderFMC:
             else:
                 raise StatusCodeError(r.status_code, r.text)
         else:
-            logger.debug(f"GET decision: {url} is else")
+            logger.debug(f"GET decision: no override URL provided")
             r: requests.Response = requests.get(
                 f"{self.host}{uri}",
                 params=payload,
@@ -298,6 +299,7 @@ class AdderFMC:
             for item in r.json()["items"]:
                 if item["name"] == name:
                     found = True
+                    logger.debug(f"UUID of object group {name}: {item['id']}")
                     return item["id"]
             else:
                 if "next" in r.json()["paging"]:
@@ -385,6 +387,7 @@ class AdderFMC:
                 {"name": item["name"], "id": item["id"], "type": item["type"]}
             )
 
+        logger.debug(f"New host objects created: {new_objects}")
         return new_objects
 
     def update_group_from_existing_host(
@@ -465,6 +468,7 @@ class AdderFMC:
             )
             raise
 
+        logger.debug(f"Deployment Response: {r.text}")
         return r
 
     def check_host_exists(self, host: str) -> bool:

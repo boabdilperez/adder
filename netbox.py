@@ -2,6 +2,7 @@ from __future__ import annotations
 from utils import *
 from pynetbox.core.api import Api
 from pynetbox.models.ipam import Record
+from pynetbox.core.query import RequestError
 from configparser import ConfigParser
 from typing import Any
 import logging
@@ -22,6 +23,7 @@ class AdderNetbox(Api):
     def __init__(self):
         Api.__init__(self, NB_URL, API_TOKEN)
         self.http_session.verify = False
+        logger.debug("Connection to Netbox established")
 
     def get_dia_ip_addrs(self, site_code: str) -> list[str]:
         """Use Netbox API to grab all DIA IP addresses from site wanrouters.
@@ -31,9 +33,21 @@ class AdderNetbox(Api):
         dia_ips_masked: list = []
 
         for device in devices:
-            dia_ips_masked.append(self.ipam.ip_addresses.get(device=device, interface="dia1").address)  # type: ignore
-            dia_ips_masked.append(self.ipam.ip_addresses.get(device=device, interface="dia2").address)  # type: ignore
+            try:
+                dia_ips_masked.append(self.ipam.ip_addresses.get(device=device, interface="dia1").address)  # type: ignore
+                dia_ips_masked.append(self.ipam.ip_addresses.get(device=device, interface="dia2").address)  # type: ignore
+            except AttributeError as e:
+                logger.warning(
+                    f"Address not found. It's possible one of the requested WR devices doesn't exist: \n{e} "
+                )
+                continue
+            except RequestError as e:
+                logger.warning(
+                    f"Address not found. It's possible one of the requested DIA interfaces doesn't exist: \n{e}"
+                )
+                continue
         dia_ips: list = [x[0:-3] for x in dia_ips_masked]
+        logger.debug(f"DIA IPs: {dia_ips}")
         return dia_ips
 
     def get_vlan_3(self, site_code: str) -> str | None:

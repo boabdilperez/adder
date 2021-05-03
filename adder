@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 from __future__ import annotations
 import logging
-import logging.config
 import requests
 import yaml
+import logging.config as log_config
 from utils import *
 from fmc import AdderFMC
 from netbox import AdderNetbox
@@ -16,7 +16,8 @@ with open("logging.yaml", "r") as f:
         contents = yaml.safe_load(f)
     except yaml.YAMLError:
         raise
-    logging.config.dictConfig(contents)
+    log_config.dictConfig(contents)
+
 # Logging enable
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,11 @@ def parse_arguments() -> argparse.Namespace:
     deploy_rollback_group = parser.add_mutually_exclusive_group()
     group_get_ips = parser.add_mutually_exclusive_group()
 
+    parser.add_argument(
+        "--target",
+        type=str,
+        help="The name of the object group you want to update. Defaults to 'Store-DIA-PROD'",
+    )
     group_get_ips.add_argument(
         "--site",
         type=str,
@@ -60,15 +66,19 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def populate_site(site_code: str, nb: AdderNetbox, fmc: AdderFMC) -> None:
+def populate_site(
+    site_code: str, nb: AdderNetbox, fmc: AdderFMC, target: str = None
+) -> None:
     """Wrapping up all the logic to get from invocation of the entire app to adding a whole site to the firewalls"""
     # First we do some input validation. Make sure that the argument passed to the function is a five-letter WFM site code.
     try:
-        logger.debug(f"Validating the site code: {site_code}")
         validate_site_code(site_code)
     except SiteCodeError as e:
         logger.error(f"Site code invalid: {e}")
         raise
+
+    if target == None:
+        target = "Store-DIA-PROD"
 
     if site_code == "tests":
         dia_ips = [
@@ -80,34 +90,33 @@ def populate_site(site_code: str, nb: AdderNetbox, fmc: AdderFMC) -> None:
         logger.debug(f"Using test list of IPs: {dia_ips}")
     else:
         dia_ips = nb.get_dia_ip_addrs(site_code)
-        logger.debug(f"Retrieving Netbox DIA IP addrs: {dia_ips}")
 
     new_objects = fmc.create_host_objects(dia_ips)
-    logger.debug(f"New host objects created: {new_objects}")
 
     if site_code == "tests":
         dia_prod_objgrp = fmc.get_netgroup_uuid("adder_test")
         logger.debug(f"UUID of object group {site_code}: {dia_prod_objgrp}")
     else:
-        dia_prod_objgrp = fmc.get_netgroup_uuid("Store-DIA-PROD")
-        logger.debug(f"UUID of object group {site_code}: {dia_prod_objgrp}")
+        dia_prod_objgrp = fmc.get_netgroup_uuid(target)
 
     if dia_prod_objgrp is not None:
         fmc.update_object_group(dia_prod_objgrp, new_objects)
+        pprint(f"These are the new objects added to ")
     else:
         raise SomethingBroke(
-            dia_prod_objgrp, message="Cannot find Store-DIA-PROD object group."
+            dia_prod_objgrp, message=f"Cannot find {target} object group."
         )
 
 
 def deploy_fmc(fmc: AdderFMC) -> tuple[requests.Response, requests.Response]:
-    dfw_response = fmc.deploy_to_device("CODFW-FTD")
-    ord_response = fmc.deploy_to_device("COORD-FTD")
+    """If the --deploy flag is set, we will attempt to deploy changes to the ORD and DFW FTDs."""
+    dfw_response = fmc.deploy_to_device(fmc.dfw_ftd)
+    ord_response = fmc.deploy_to_device(fmc.ord_ftd)
     return (dfw_response, ord_response)
 
 
-def deploy_singles(fmc: AdderFMC) -> None:
-    print("MOCK FUNC: deploy_singles()")
+def populate_from_single(fmc: AdderFMC, target: str = None) -> None:
+    print("MOCK FUNC: populate_from_single()")
 
 
 def rollback_fmc(fmc: AdderFMC) -> None:
@@ -117,25 +126,41 @@ def rollback_fmc(fmc: AdderFMC) -> None:
 def main(args):
     # Establish API connection object to FMC
     fmc = AdderFMC()
-    logger.debug("Connection to FMC established")
 
     # Establish API connection object to Netbox
     nb = AdderNetbox()
-    logger.debug("Connection to Netbox established")
+
+    deployable_devices = fmc.get_deployable_devices()
+    for device in deployable_devices.json()["items"]:
+        if device["name"] == fmc.ord_ftd:
+            input(
+                "The ORD FTD already has pending changes. ENTER to proceed, Ctrl-C to exit."
+            )
+            break
+
+    for device in deployable_devices.json()["items"]:
+        if device["name"] == fmc.dfw_ftd:
+            input(
+                "The DFW FTD already has pending changes. ENTER to proceed, Ctrl-C to exit."
+            )
+            break
 
     if args.site:
+        if args.target:
+            populate_site(args.site, nb, fmc, target=args.target)
         populate_site(args.site, nb, fmc)
         if args.deploy:
-            rdfw, rord = deploy_fmc(fmc)
-            logger.debug(f"{rdfw}\n {rord}")
+            _, _ = deploy_fmc(fmc)
             return
     elif args.ip:
-        deploy_singles(fmc)
+        if args.target:
+            populate_from_single(fmc, target=args.target)
+        populate_from_single(fmc)
         if args.deploy:
             # deploy_fmc(fmc)
             return
     elif args.deploy:
-        # deploy_fmc(fmc)
+        deploy_fmc(fmc)
         return
     elif args.rollback:
         rollback_fmc(fmc)

@@ -1,5 +1,9 @@
 from __future__ import annotations
 import ipaddress
+import logging
+
+# Logging enable
+logger = logging.getLogger(__name__)
 
 
 class SomethingBroke(Exception):
@@ -84,17 +88,23 @@ def check_ip_overlap(network_group_ips: list[str], dia_ips: list[str]):
 
 def validate_site_code(site_code: str):
     """Check to see if the site code is exactly five letters, no other characters, and returns true if it validates."""
+    logger.debug(f"Validating the site code: {site_code}")
     if site_code.isalpha() and len(site_code) == 5:
+        logger.debug(f"Site code valid: {site_code}")
         return
     else:
+        logger.error(f"Site code invalid: {site_code}")
         raise SiteCodeError(site_code, message="Provided site sode is not valid")
 
 
 def validate_ip(ip: str) -> bool:
     """Input validation for IP addresses"""
     try:
-        valid_addr = ipaddress.ip_address(str)
+        valid_addr = ipaddress.ip_address(ip)
     except ValueError:
         raise
-    else:
+
+    if valid_addr:
         return True
+    else:
+        return False
