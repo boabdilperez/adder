@@ -139,7 +139,7 @@ def main(args):
         # deploy_fmc(fmc)
         return
     elif args.rollback:
-        # rollback_fmc(fmc)
+        rollback_fmc(fmc)
         return
 
 
