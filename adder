@@ -5,13 +5,13 @@ import requests
 import yaml
 import logging.config as log_config
 from utils import *
-from fmc import AdderFMC
-from netbox import AdderNetbox
+from devices.fmc import AdderFMC
+from devices.netbox import AdderNetbox
 from pprint import pprint
 import argparse
 
 # Logging config
-with open("logging.yaml", "r") as f:
+with open("./log/log.conf", "r") as f:
     try:
         contents = yaml.safe_load(f)
     except yaml.YAMLError:

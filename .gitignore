@@ -1,0 +1,6 @@
+__pycache__
+.vscode
+adder.conf
+*.log*
+test.py
+*.json
