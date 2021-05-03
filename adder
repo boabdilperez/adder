@@ -145,24 +145,25 @@ def main(args):
             )
             break
 
-    if args.site:
-        if args.target:
+    if args.site is not None:
+        if args.target is not None:
             populate_site(args.site, nb, fmc, target=args.target)
-        populate_site(args.site, nb, fmc)
-        if args.deploy:
+        else:
+            populate_site(args.site, nb, fmc)
+        if args.deploy is not None:
             _, _ = deploy_fmc(fmc)
             return
-    elif args.ip:
-        if args.target:
+    elif args.ip is not None:
+        if args.target is not None:
             populate_from_single(fmc, target=args.target)
         populate_from_single(fmc)
-        if args.deploy:
+        if args.deploy is not None:
             # deploy_fmc(fmc)
             return
-    elif args.deploy:
+    elif args.deploy is not None:
         deploy_fmc(fmc)
         return
-    elif args.rollback:
+    elif args.rollback is not None:
         rollback_fmc(fmc)
         return
 
