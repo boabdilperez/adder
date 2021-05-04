@@ -70,7 +70,7 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
-            logger.debug(f"Making get request: {r.request.body}")
+            logger.debug(f"Making get request to {url}")
             if 200 <= r.status_code <= 299:
                 return r
             else:
@@ -84,7 +84,7 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
-            logger.debug(f"Making get request: {r.request.body}")
+            logger.debug(f"Making get request to {uri}")
             if 200 <= r.status_code <= 299:
                 return r
             else:
@@ -350,6 +350,7 @@ class AdderFMC:
         the created objects."""
         uri: str = f"{self.uri_base}/object/hosts"
         new_objects: list[dict[str, str]] = []
+        flag = len(ip_addrs)
 
         try:
             for addr in ip_addrs:
@@ -384,13 +385,23 @@ class AdderFMC:
             }
             try:
                 r: requests.Response = self.post(uri, single_body)
+                logger.debug(f"Create new object post response: {r.json()}")
             except StatusCodeError as e:
                 logger.error(f"Error creating host object: {e}")
                 raise
 
-        for item in r.json()["items"]:
+        if flag > 1:
+            for item in r.json()["items"]:
+                new_objects.append(
+                    {"name": item["name"], "id": item["id"], "type": item["type"]}
+                )
+        elif flag == 1:
             new_objects.append(
-                {"name": item["name"], "id": item["id"], "type": item["type"]}
+                {
+                    "name": r.json()["name"],
+                    "id": r.json()["id"],
+                    "type": r.json()["type"],
+                }
             )
 
         logger.debug(f"New host objects created: {new_objects}")
@@ -420,7 +431,7 @@ class AdderFMC:
         obj_group.update({"backup_timestamp": str(datetime.now())})
         obj_group.update({"backup_uuid": str(uuid.uuid1())})
         try:
-            with open(f"{obj_group['backup_uuid']}.json", "w") as backup:
+            with open(f"./backups/{obj_group['backup_uuid']}.json", "w") as backup:
                 json.dump(obj_group, backup)
         except:
             logger.error(f"Error creating backup of {obj_group}")
