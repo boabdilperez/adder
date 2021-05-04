@@ -94,18 +94,16 @@ def populate_site(
     new_objects = fmc.create_host_objects(dia_ips)
 
     if site_code == "tests":
-        dia_prod_objgrp = fmc.get_netgroup_uuid("adder_test")
-        logger.debug(f"UUID of object group {site_code}: {dia_prod_objgrp}")
+        obj_group = fmc.get_netgroup_uuid("adder_test")
+        logger.debug(f"UUID of object group {site_code}: {obj_group}")
     else:
-        dia_prod_objgrp = fmc.get_netgroup_uuid(target)
+        obj_group = fmc.get_netgroup_uuid(target)
 
-    if dia_prod_objgrp is not None:
-        fmc.update_object_group(dia_prod_objgrp, new_objects)
-        pprint(f"These are the new objects added to ")
+    if obj_group is not None:
+        fmc.update_object_group(obj_group, new_objects)
+        pprint(f"These are the new objects added: {new_objects}")
     else:
-        raise SomethingBroke(
-            dia_prod_objgrp, message=f"Cannot find {target} object group."
-        )
+        raise SomethingBroke(obj_group, message=f"Cannot find {target} object group.")
 
 
 def deploy_fmc(fmc: AdderFMC) -> tuple[requests.Response, requests.Response]:
@@ -115,8 +113,26 @@ def deploy_fmc(fmc: AdderFMC) -> tuple[requests.Response, requests.Response]:
     return (dfw_response, ord_response)
 
 
-def populate_from_single(fmc: AdderFMC, target: str = None) -> None:
-    print("MOCK FUNC: populate_from_single()")
+def populate_from_single(fmc: AdderFMC, new_ips: list, target: str = None) -> None:
+    """Skip the netbox! This lets you enter a list of IPs into adder and have them added to the FMC"""
+    # Determine what obj group we're going to modify
+    if target is None:
+        target = "Store-DIA-PROD"
+
+    # Create the host objects for the new IPs
+    new_objects = fmc.create_host_objects(new_ips)
+
+    # Get UUID for object group to be modified
+    obj_group = fmc.get_netgroup_uuid(target)
+
+    # Modify!
+    if obj_group is not None:
+        try:
+            fmc.update_object_group(obj_group, new_objects)
+        except:
+            raise
+    else:
+        raise SomethingBroke(obj_group, message=f"Cannot find {target} object group.")
 
 
 def rollback_fmc(fmc: AdderFMC) -> None:
@@ -154,11 +170,9 @@ def main(args):
             _, _ = deploy_fmc(fmc)
             return
     elif args.ip is not None:
-        if args.target is not None:
-            populate_from_single(fmc, target=args.target)
-        populate_from_single(fmc)
+        populate_from_single(fmc, args.ip, target=args.target)
         if args.deploy is not None:
-            # deploy_fmc(fmc)
+            deploy_fmc(fmc)
             return
     elif args.deploy is not None:
         deploy_fmc(fmc)
