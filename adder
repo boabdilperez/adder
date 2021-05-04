@@ -56,11 +56,6 @@ def parse_arguments() -> argparse.Namespace:
         help="Rolls back the most recent change made to the FTD's DIA object-group. Cannot mix with --deploy",
         action="store_true",
     )
-    parser.add_argument(
-        "--target",
-        type=str,
-        help="Identify a specific object-group to modify. Default is Store-DIA-PROD",
-    )
 
     return parser.parse_args()
 
