@@ -60,7 +60,6 @@ def parse_arguments() -> argparse.Namespace:
         "--target",
         type=str,
         help="Identify a specific object-group to modify. Default is Store-DIA-PROD",
-        default="Store-DIA-PROD",
     )
 
     return parser.parse_args()
