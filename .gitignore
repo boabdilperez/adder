@@ -4,3 +4,4 @@ adder.conf
 *.log*
 test.py
 *.json
+.DS_Store

@@ -431,7 +431,7 @@ class AdderFMC:
         obj_group.update({"backup_timestamp": str(datetime.now())})
         obj_group.update({"backup_uuid": str(uuid.uuid1())})
         try:
-            with open(f"./backups/{obj_group['backup_uuid']}.json", "w") as backup:
+            with open(f"./backups/{obj_group['backup_timestamp']}.json", "w") as backup:
                 json.dump(obj_group, backup)
         except:
             logger.error(f"Error creating backup of {obj_group}")
