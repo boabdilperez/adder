@@ -12,7 +12,7 @@ Details are fed to adder via command-line flags, and the app parses the argument
 
 * --deploy takes no arguments, but when passed to adder will trigger an attempt for the FMC to deploy the updated rules to the ORD and DFW firewalls. If passed in conjunction with IPs or a site name, it will add the new IPs first. If passed to adder with no other arguments, it will simply attempt to deploy whatever pending changes are on the FMC to DFW/ORD.
 
-* --rollback is a special flag for undoing changes to the FMC. It should be mixed with any other options. When passed to adder with no arguments, all available backup files will be presented to the user, marked with timestamps and UUIDs. If a UUID is passed as an argument to the --rollback flag, then the object group identified by that backup file will be completely overwritten by the data in the backup file.
+* --rollback is a special flag for undoing changes to the FMC. It should be mixed with any other options. When passed to adder with no arguments, all available backup files will be presented to the user, marked with timestamps and UUIDs. If a UUID is passed as an argument to the --rollback flag, then the object group identified by that backup file will be completely overwritten by the data in the backup file. **NOT IMPLEMENTED YET. Contact Bobby for help with rolling back changes via API**
 
 * --target overrides the destination object group for the automated update. By default the "Store-DIA-PROD" object group is the one updated on the FMC. If a string is fed as an argument to --target the app will attempt to find that object group and update it instead.
 
