@@ -113,20 +113,27 @@ def populate_from_single(fmc: AdderFMC, new_ips: list, target: str = None) -> No
     if target is None:
         target = "Store-DIA-PROD"
 
-    # Create the host objects for the new IPs
-    new_objects = fmc.create_host_objects(new_ips)
-
     # Get UUID for object group to be modified
     obj_group = fmc.get_netgroup_uuid(target)
 
-    # Modify!
-    if obj_group is not None:
-        try:
-            fmc.update_object_group(obj_group, new_objects)
-        except:
-            raise
+    # Create the host objects for the new IPs
+    try:
+        new_objects = fmc.create_host_objects(new_ips)
+    except HostAlreadyExistsWarning as e:
+        logger.debug(
+            f"Host already exists, skipping creation process and adding host to object group."
+        )
+        if obj_group is not None:
+            for ip in new_ips:
+                fmc.update_group_from_existing_host(obj_group, ip)
     else:
-        raise SomethingBroke(obj_group, message=f"Cannot find {target} object group.")
+        # Modify!
+        if obj_group is not None:
+            fmc.update_object_group(obj_group, new_objects)
+        else:
+            raise SomethingBroke(
+                obj_group, message=f"Cannot find {target} object group."
+            )
 
 
 def rollback_fmc(fmc: AdderFMC) -> None:
@@ -160,20 +167,16 @@ def main(args):
             populate_site(args.site, nb, fmc, target=args.target)
         else:
             populate_site(args.site, nb, fmc)
-        if args.deploy is not None:
+        if args.deploy:
             _, _ = deploy_fmc(fmc)
-            return
     elif args.ip is not None:
         populate_from_single(fmc, args.ip, target=args.target)
-        if args.deploy is not None:
+        if args.deploy:
             deploy_fmc(fmc)
-            return
-    elif args.deploy is not None:
+    elif args.deploy:
         deploy_fmc(fmc)
-        return
-    elif args.rollback is not None:
+    elif args.rollback:
         rollback_fmc(fmc)
-        return
 
 
 if __name__ == "__main__":
