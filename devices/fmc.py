@@ -70,6 +70,7 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
+            logger.debug(f"Making get request: {r.request.body}")
             if 200 <= r.status_code <= 299:
                 return r
             else:
@@ -83,6 +84,7 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
+            logger.debug(f"Making get request: {r.request.body}")
             if 200 <= r.status_code <= 299:
                 return r
             else:
@@ -105,6 +107,7 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
+            logger.debug(f"Making post request: {r.request.body}")
             if 200 <= r.status_code <= 299:
                 return r
             else:
@@ -117,6 +120,7 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
+            logger.debug(f"Making post request: {r.request.body}")
             if 200 <= r.status_code <= 299:
                 return r
             else:
@@ -139,6 +143,7 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
+            logger.debug(f"Making put request: {r.request.body}")
             if 200 <= r.status_code <= 299:
                 return r
             else:
@@ -151,6 +156,7 @@ class AdderFMC:
                 json=body,
                 verify=False,
             )
+            logger.debug(f"Making put request: {r.request.body}")
             if 200 <= r.status_code <= 299:
                 return r
             else:
