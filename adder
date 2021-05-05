@@ -117,11 +117,12 @@ def populate_from_single(fmc: AdderFMC, arg_ips: list, target: str = None) -> No
         for ip in existing_ips:
             fmc.update_group_from_existing_host(obj_group, ip)
 
-    new_objects = fmc.create_host_objects(new_ips)
-    fmc.update_object_group(obj_group, new_objects)
-    logger.debug(
-        f"Newly Created IPs: {new_ips}\nAlready Existing IPs: {existing_ips}\nInvalid IPs: {bad_ips}"
-    )
+    if len(new_ips) >= 1:
+        new_objects = fmc.create_host_objects(new_ips)
+        fmc.update_object_group(obj_group, new_objects)
+        logger.debug(
+            f"Newly Created IPs: {new_ips}\nAlready Existing IPs: {existing_ips}\nInvalid IPs: {bad_ips}"
+        )
     print(
         f"\nNewly Created IPs: {new_ips}\nAlready Existing IPs: {existing_ips}\nInvalid IPs: {bad_ips}\n"
     )
@@ -131,7 +132,7 @@ def rollback_fmc(fmc: AdderFMC) -> None:
     print("MOCK FUNC: rollback_fmc()")
 
 
-def main(args):
+def main(args) -> None:
     # Establish API connection object to FMC
     fmc = AdderFMC()
 
@@ -172,4 +173,5 @@ def main(args):
 
 if __name__ == "__main__":
     args = parse_arguments()
+    logger.debug(f"Arguments Passed: {args}")
     main(args)
