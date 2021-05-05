@@ -357,7 +357,9 @@ class AdderFMC:
             for addr in ip_addrs:
                 self.check_host_exists(addr)
         except HostAlreadyExistsWarning:
-            logger.warning(f"Host already exists on FMC")
+            logger.warning(
+                f"Host already exists on FMC. Skipping creation of new host object."
+            )
             raise
 
         if len(ip_addrs) > 1:
