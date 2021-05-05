@@ -9,7 +9,10 @@ import json
 import requests
 import logging
 import uuid
+import urllib3
 
+# Ignore SSL warnings from the FMC
+urllib3.disable_warnings()
 
 # Logging enable
 logger = logging.getLogger(__name__)
