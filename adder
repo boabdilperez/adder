@@ -123,7 +123,7 @@ def populate_from_single(fmc: AdderFMC, arg_ips: list, target: str = None) -> No
         f"Newly Created IPs: {new_ips}\nAlready Existing IPs: {existing_ips}\nInvalid IPs: {bad_ips}"
     )
     print(
-        f"Newly Created IPs: {new_ips}\nAlready Existing IPs: {existing_ips}\nInvalid IPs: {bad_ips}"
+        f"\nNewly Created IPs: {new_ips}\nAlready Existing IPs: {existing_ips}\nInvalid IPs: {bad_ips}\n"
     )
 
 
