@@ -109,8 +109,9 @@ def populate_from_single(fmc: AdderFMC, arg_ips: list, target: str = None) -> No
         else:
             new_ips.append(ip)
 
-    for ip in existing_ips:
-        fmc.update_group_from_existing_host(obj_group, ip)
+    if len(existing_ips) >= 1:
+        for ip in existing_ips:
+            fmc.update_group_from_existing_host(obj_group, ip)
 
     new_objects = fmc.create_host_objects(new_ips)
     fmc.update_object_group(obj_group, new_objects)
