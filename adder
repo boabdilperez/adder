@@ -65,11 +65,7 @@ def populate_site(
 ) -> None:
     """Wrapping up all the logic to get from invocation of the entire app to adding a whole site to the firewalls"""
     # First we do some input validation. Make sure that the argument passed to the function is a five-letter WFM site code.
-    try:
-        validate_site_code(site_code)
-    except SiteCodeError as e:
-        logger.error(f"Site code invalid: {e}")
-        raise
+    validate_site_code(site_code)
 
     if target == None:
         target = "Store-DIA-PROD"
