@@ -81,11 +81,8 @@ def populate_site(
     obj_group = fmc.get_netgroup_uuid(target)
     logger.debug(f"UUID of object group {site_code}: {obj_group}")
 
-    if obj_group is not None:
-        fmc.update_object_group(obj_group, new_objects)
-        pprint(f"These are the new objects added: {new_objects}")
-    else:
-        raise SomethingBroke(obj_group, message=f"Cannot find {target} object group.")
+    fmc.update_object_group(obj_group, new_objects)
+    pprint(f"These are the new objects added: {new_objects}")
 
 
 def deploy_fmc(fmc: AdderFMC) -> tuple[requests.Response, requests.Response]:
