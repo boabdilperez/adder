@@ -295,7 +295,7 @@ class AdderFMC:
         #         message="Size of HTTP response is too big. Implement pagination.",
         #     )
 
-    def get_netgroup_uuid(self, name: str) -> str | None:
+    def get_netgroup_uuid(self, name: str) -> str:
         """Searches for the network object group named in the args, returns object's UUID if it's in the 200-299 range."""
         uri: str = f"{self.uri_base}/object/networkgroups"
         r: requests.Response = self.get(uri)
@@ -312,7 +312,8 @@ class AdderFMC:
                     url = r.json()["paging"]["next"][0]
                     r: requests.Response = self.get(uri, url=url)
                 else:
-                    return None
+                    break
+        raise ObjectNotFoundWarning(name)
 
     def get_tokens(self) -> dict[str, str]:
         """API request to the FMC API to authenticate user and return the tokens necessary for further, authenticated, API calls."""

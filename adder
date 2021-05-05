@@ -74,24 +74,12 @@ def populate_site(
     if target == None:
         target = "Store-DIA-PROD"
 
-    if site_code == "tests":
-        dia_ips = [
-            "169.254.100.201",
-            "169.254.100.202",
-            "169.254.100.203",
-            "169.254.100.204",
-        ]
-        logger.debug(f"Using test list of IPs: {dia_ips}")
-    else:
-        dia_ips = nb.get_dia_ip_addrs(site_code)
+    dia_ips = nb.get_dia_ip_addrs(site_code)
+    logger.debug(f"Using this list of IPs: {dia_ips}")
 
     new_objects = fmc.create_host_objects(dia_ips)
-
-    if site_code == "tests":
-        obj_group = fmc.get_netgroup_uuid("adder_test")
-        logger.debug(f"UUID of object group {site_code}: {obj_group}")
-    else:
-        obj_group = fmc.get_netgroup_uuid(target)
+    obj_group = fmc.get_netgroup_uuid(target)
+    logger.debug(f"UUID of object group {site_code}: {obj_group}")
 
     if obj_group is not None:
         fmc.update_object_group(obj_group, new_objects)
@@ -107,33 +95,32 @@ def deploy_fmc(fmc: AdderFMC) -> tuple[requests.Response, requests.Response]:
     return (dfw_response, ord_response)
 
 
-def populate_from_single(fmc: AdderFMC, new_ips: list, target: str = None) -> None:
+def populate_from_single(fmc: AdderFMC, arg_ips: list, target: str = None) -> None:
     """Skip the netbox! This lets you enter a list of IPs into adder and have them added to the FMC"""
-    # Determine what obj group we're going to modify
-    if target is None:
-        target = "Store-DIA-PROD"
+    existing_ips = []
+    new_ips = []
 
-    # Get UUID for object group to be modified
-    obj_group = fmc.get_netgroup_uuid(target)
-
-    # Create the host objects for the new IPs
-    try:
-        new_objects = fmc.create_host_objects(new_ips)
-    except HostAlreadyExistsWarning as e:
-        logger.debug(
-            f"Host already exists, skipping creation process and adding host to object group."
-        )
-        if obj_group is not None:
-            for ip in new_ips:
-                fmc.update_group_from_existing_host(obj_group, ip)
+    if target == None:
+        obj_group = "Store-DIA-PROD"
     else:
-        # Modify!
-        if obj_group is not None:
-            fmc.update_object_group(obj_group, new_objects)
+        obj_group = fmc.get_netgroup_uuid(target)
+
+    for ip in arg_ips:
+        logger.debug(f"Validating IPs passed to adder: {arg_ips}")
+        _ = validate_ip(ip)
+
+        try:
+            fmc.check_host_exists(ip)
+        except HostAlreadyExistsWarning:
+            existing_ips.append(ip)
         else:
-            raise SomethingBroke(
-                obj_group, message=f"Cannot find {target} object group."
-            )
+            new_ips.append(ip)
+
+    for ip in existing_ips:
+        fmc.update_group_from_existing_host(obj_group, ip)
+
+    new_objects = fmc.create_host_objects(new_ips)
+    fmc.update_object_group(obj_group, new_objects)
 
 
 def rollback_fmc(fmc: AdderFMC) -> None:

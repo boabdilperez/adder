@@ -63,6 +63,15 @@ class HostNotFoundWarning(SomethingBroke):
         super().__init__(self.host, self.message)
 
 
+class InvalidIPArgumentError(SomethingBroke):
+    """Exception raised when an IP address is invalid"""
+
+    def __init__(self, ip, message="Invalid IP address detected"):
+        self.ip = ip
+        self.message = message
+        super().__init__(self.ip, self.message)
+
+
 class IPOverlapWarning(SomethingBroke):
     """Exception raised when the DIA IP addresses retrieved from Netbox already appear to exist in the DIA object-group of the FMC"""
 
@@ -74,6 +83,15 @@ class IPOverlapWarning(SomethingBroke):
         self.dia_ips = dia_ips
         self.message = message
         super().__init__(self.dia_ips, self.message)
+
+
+class ObjectNotFoundWarning(SomethingBroke):
+    """Exception raised when failing to query an object-group name for its UUID"""
+
+    def __init__(self, target, message="UUID for object group could not be found"):
+        self.target = target
+        self.message = message
+        super().__init__(self.target, self.message)
 
 
 def check_ip_overlap(network_group_ips: list[str], dia_ips: list[str]):
@@ -102,9 +120,6 @@ def validate_ip(ip: str) -> bool:
     try:
         valid_addr = ipaddress.ip_address(ip)
     except ValueError:
-        raise
-
-    if valid_addr:
-        return True
+        raise InvalidIPArgumentError(ip, message=f"Invalid IP detected: {ip}")
     else:
-        return False
+        return True
