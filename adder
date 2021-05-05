@@ -101,17 +101,19 @@ def populate_from_single(fmc: AdderFMC, arg_ips: list, target: str = None) -> No
 
     for ip in arg_ips:
         logger.debug(f"Validating IP passed to adder: {ip}")
-        valid = validate_ip(ip)
-        if valid:
-            try:
-                fmc.check_host_exists(ip)
-            except HostAlreadyExistsWarning:
-                existing_ips.append(ip)
-            else:
-                new_ips.append(ip)
-        else:
+
+        try:
+            _ = validate_ip(ip)
+        except InvalidIPArgumentError:
             bad_ips.append(ip)
             continue
+
+        try:
+            fmc.check_host_exists(ip)
+        except HostAlreadyExistsWarning:
+            existing_ips.append(ip)
+        else:
+            new_ips.append(ip)
 
     if len(existing_ips) >= 1:
         for ip in existing_ips:
