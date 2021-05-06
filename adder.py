@@ -22,6 +22,13 @@ with open("./log/log.conf", "r") as f:
 logger = logging.getLogger(__name__)
 
 
+def deploy_fmc(fmc: AdderFMC) -> tuple[requests.Response, requests.Response]:
+    """If the --deploy flag is set, we will attempt to deploy changes to the ORD and DFW FTDs."""
+    dfw_response = fmc.deploy_to_device(fmc.dfw_ftd)
+    ord_response = fmc.deploy_to_device(fmc.ord_ftd)
+    return (dfw_response, ord_response)
+
+
 def parse_arguments() -> argparse.Namespace:
     """Here we parse all our arguments, get the values and return them so we can pass into the main func"""
     parser = argparse.ArgumentParser(
@@ -35,12 +42,13 @@ def parse_arguments() -> argparse.Namespace:
         type=str,
         help="The name of the object group you want to update. Defaults to 'Store-DIA-PROD'",
     )
-    group_get_ips.add_argument(
+    parser.add_argument(
         "--site",
         type=str,
-        help="The five letter site code you are trying to deploy. Site must be built in netbox for this to work.",
+        help="The five letter site code you are trying to deploy. Sites must be built in netbox for this to work. Can add multiple space-delimited site codes",
+        nargs="+",
     )
-    group_get_ips.add_argument(
+    parser.add_argument(
         "--ip",
         type=str,
         help="Use this to manually specify the IP addresses you are trying to apply to the firewalls. Separate with spaces. Doesn't mix with --site",
@@ -61,31 +69,60 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def populate_site(
-    site_code: str, nb: AdderNetbox, fmc: AdderFMC, target: str = None
+    nb: AdderNetbox, fmc: AdderFMC, site_codes: list[str], target: str = None
 ) -> None:
-    """Wrapping up all the logic to get from invocation of the entire app to adding a whole site to the firewalls"""
-    # First we do some input validation. Make sure that the argument passed to the function is a five-letter WFM site code.
-    validate_site_code(site_code)
+    """Takes a list of site codes and adds the corresponding IP addresses to the firewall"""
+    new_sites = []
+    bad_sites = []
+    new_ips = []
+    existing_ips = []
+    bad_ips = []
 
     if target == None:
-        target = "Store-DIA-PROD"
+        obj_group = fmc.get_netgroup_uuid("Store-DIA-PROD")
+    else:
+        obj_group = fmc.get_netgroup_uuid(target)
 
-    dia_ips = nb.get_dia_ip_addrs(site_code)
-    logger.debug(f"Using this list of IPs: {dia_ips}")
+    for site_code in site_codes:
+        try:
+            validate_site_code(site_code)
+        except SiteCodeError:
+            logger.warning(f"Site Code Invalid: {site_code}")
+            bad_sites.append(site_code)
+        else:
+            logger.debug(f"Site Code to be added: {site_code}")
+            new_sites.append(site_code)
 
-    new_objects = fmc.create_host_objects(dia_ips)
-    obj_group = fmc.get_netgroup_uuid(target)
-    logger.debug(f"UUID of object group {site_code}: {obj_group}")
+    for site_code in new_sites:
+        dia_ips = nb.get_dia_ip_addrs(site_code)
+        for ip in dia_ips:
+            logger.debug(f"Validating IP {ip} from site {site_code}")
+            try:
+                validate_ip(ip)
+            except InvalidIPArgumentError:
+                bad_ips.append(ip)
+                continue
 
-    fmc.update_object_group(obj_group, new_objects)
-    pprint(f"These are the new objects added: {new_objects}")
+            try:
+                fmc.check_host_exists(ip)
+            except HostAlreadyExistsWarning:
+                existing_ips.append(ip)
+            else:
+                new_ips.append(ip)
 
+    if len(existing_ips) >= 1:
+        for ip in existing_ips:
+            fmc.update_group_from_existing_host(obj_group, ip)
 
-def deploy_fmc(fmc: AdderFMC) -> tuple[requests.Response, requests.Response]:
-    """If the --deploy flag is set, we will attempt to deploy changes to the ORD and DFW FTDs."""
-    dfw_response = fmc.deploy_to_device(fmc.dfw_ftd)
-    ord_response = fmc.deploy_to_device(fmc.ord_ftd)
-    return (dfw_response, ord_response)
+    if len(new_ips) >= 1:
+        new_objects = fmc.create_host_objects(new_ips)
+        fmc.update_object_group(obj_group, new_objects)
+        logger.debug(
+            f"\nNewly added sites: {site_codes}\nNewly Created IPs from sites: {new_ips}\nAlready Existing IPs from sites: {existing_ips}\nInvalid IPs: {bad_ips}. Check netbox!\n"
+        )
+    print(
+        f"\nNewly added sites: {site_codes}\nNewly Created IPs from sites: {new_ips}\nAlready Existing IPs from sites: {existing_ips}\nInvalid IPs: {bad_ips}. Check netbox!\n"
+    )
 
 
 def populate_from_single(fmc: AdderFMC, arg_ips: list, target: str = None) -> None:
@@ -95,7 +132,7 @@ def populate_from_single(fmc: AdderFMC, arg_ips: list, target: str = None) -> No
     bad_ips = []
 
     if target == None:
-        obj_group = "Store-DIA-PROD"
+        obj_group = fmc.get_netgroup_uuid("Store-DIA-PROD")
     else:
         obj_group = fmc.get_netgroup_uuid(target)
 
@@ -158,16 +195,16 @@ def main(args) -> None:
 
     if args.site is not None:
         if args.target is not None:
-            populate_site(args.site, nb, fmc, target=args.target)
+            populate_site(nb, fmc, args.site, target=args.target)
         else:
-            populate_site(args.site, nb, fmc)
-        if args.deploy:
-            _, _ = deploy_fmc(fmc)
-    elif args.ip is not None:
+            populate_site(nb, fmc, args.site)
+
+    if args.ip is not None:
         populate_from_single(fmc, args.ip, target=args.target)
         if args.deploy:
             deploy_fmc(fmc)
-    elif args.deploy:
+
+    if args.deploy:
         deploy_fmc(fmc)
     elif args.rollback:
         rollback_fmc(fmc)
