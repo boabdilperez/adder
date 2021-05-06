@@ -6,7 +6,7 @@ Details are fed to adder via command-line flags, and the app parses the argument
 
 ## Usage:
 
-* --site expects an argument of a single five-letter WFM store code. Adder will search netbox for the matching site and add the DIA IP addresses to the firewalls for you. The site must be built in netbox for this to work, since the app is looking for specific interfaces on the WR-1 and WR-2 devices.
+* --site expects an argument of any number of five-letter WFM store codes. Adder will search netbox for the matching sites and add the available DIA IP addresses to the firewalls for you. The site must be built in netbox for this to work, since the app is looking for specific interfaces on the WR-1 and WR-2 devices.
 
 * --ip takes one or more host IP addresses, without subnet masks, and attempts to add them to the firewalls. You can mix and match this option with the --site option, now!
 
