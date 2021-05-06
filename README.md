@@ -28,6 +28,11 @@ adder --site swqry --deploy
 adder --ip 169.254.100.100 169.254.200.200 --target adder_test
 ```
 
+* Add two IP addresses and two site codes, and then deploy them all:
+```
+adder --ip 169.254.100.210 169.254.100.220 --site swqry swatx --deploy
+```
+
 
 ## Upcoming Capabilities:
 * Automatic update of SROS routers
