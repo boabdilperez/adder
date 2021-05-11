@@ -35,7 +35,6 @@ def parse_arguments() -> argparse.Namespace:
         description="Adds DIA IP addresses from Netbox into the Cisco Firewalls and SROS routers"
     )
     deploy_rollback_group = parser.add_mutually_exclusive_group()
-    group_get_ips = parser.add_mutually_exclusive_group()
 
     parser.add_argument(
         "--target",
