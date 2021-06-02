@@ -50,7 +50,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--ip",
         type=str,
-        help="Use this to manually specify the IP addresses you are trying to apply to the firewalls. Separate with spaces. Doesn't mix with --site",
+        help="Use this to manually specify the IP addresses you are trying to apply to the firewalls.",
         nargs="+",
     )
     deploy_rollback_group.add_argument(
