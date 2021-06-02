@@ -1,0 +1,12 @@
+[netbox]
+# token = ""
+# url = http://netbox.wfm.pvt
+
+[fmc]
+# host = https://cowfm-firesight.wfm.pvt
+# dfw_ftd = CODFW-FTD
+# ord_ftd = COORD-FTD
+
+[sros]
+# username = ""
+# password = ""
