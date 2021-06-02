@@ -6,9 +6,9 @@ Details are fed to adder via command-line flags, and the app parses the argument
 
 ## Usage:
 
-* --site expects an argument of a single five-letter WFM store code. Adder will search netbox for the matching site and add the DIA IP addresses to the firewalls for you. The site must be built in netbox for this to work, since the app is looking for specific interfaces on the WR-1 and WR-2 devices.
+* --site expects an argument of any number of five-letter WFM store codes. Adder will search netbox for the matching sites and add the available DIA IP addresses to the firewalls for you. The site must be built in netbox for this to work, since the app is looking for specific interfaces on the WR-1 and WR-2 devices.
 
-* --ip takes one or more host IP addresses, without subnet masks, and attempts to add them to the firewalls. You cannot mix and match this option with the --site option, one or the other must be used.
+* --ip takes one or more host IP addresses, without subnet masks, and attempts to add them to the firewalls. You can mix and match this option with the --site option, now!
 
 * --deploy takes no arguments, but when passed to adder will trigger an attempt for the FMC to deploy the updated rules to the ORD and DFW firewalls. If passed in conjunction with IPs or a site name, it will add the new IPs first. If passed to adder with no other arguments, it will simply attempt to deploy whatever pending changes are on the FMC to DFW/ORD.
 
@@ -26,6 +26,11 @@ adder --site swqry --deploy
 * Add two IP addresses to the 'adder_test' object group, but don't deploy anything:
 ```
 adder --ip 169.254.100.100 169.254.200.200 --target adder_test
+```
+
+* Add two IP addresses and two site codes, and then deploy them all:
+```
+adder --ip 169.254.100.210 169.254.100.220 --site swqry swatx --deploy
 ```
 
 

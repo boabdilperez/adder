@@ -5,6 +5,7 @@ from pynetbox.models.ipam import Record
 from pynetbox.core.query import RequestError
 from configparser import ConfigParser
 from typing import Any
+from getpass import getpass
 import logging
 
 # Logging enable
@@ -15,13 +16,21 @@ config = ConfigParser()
 config.read("adder.conf")
 
 # Set global variables from the config file
-API_TOKEN: str = config["netbox"]["token"]
+try:
+    API_TOKEN: str = config["netbox"]["token"]
+except:
+    API_TOKEN = "None"
+    logging.debug("API token not found in config. Will prompt.")
 NB_URL: str = config["netbox"]["url"]
 
 
 class AdderNetbox(Api):
     def __init__(self):
-        Api.__init__(self, NB_URL, API_TOKEN)
+        if API_TOKEN != "None":
+            Api.__init__(self, NB_URL, API_TOKEN)
+        else:
+            self.api_token = getpass(prompt="NetBox API token: ")
+            Api.__init__(self, NB_URL, self.api_token)
         self.http_session.verify = False
         logger.debug("Connection to Netbox established")
 
