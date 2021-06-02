@@ -60,7 +60,7 @@ def parse_arguments() -> argparse.Namespace:
     )
     deploy_rollback_group.add_argument(
         "--rollback",
-        help="Rolls back the most recent change made to the FTD's DIA object-group. Cannot mix with --deploy",
+        help="Rolls back the most recent change made to the FTD's DIA object-group. Cannot mix with --deploy. Not working.",
         action="store_true",
     )
 
