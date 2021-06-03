@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "adder"
+version = "0.1.0"
+description = "Automating firewall object group changes"
+authors = ["Boabdil Perez <boabdil.perez@wholefoods.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+requests = "*"
+pynetbox = "*"
+pyyaml = "*"
+
+[tool.poetry.dev-dependencies]
+black = "*"
+pretty_errors = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
