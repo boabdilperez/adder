@@ -5,5 +5,5 @@ config = ConfigParser()
 config.read("adder.conf")
 
 # Set global variables from the config file
-SROS_PASS: str = config["sros"]["password"]
-SROS_USER: str = config["sros"]["username"]
+# SROS_PASS: str = config["sros"]["password"]
+# SROS_USER: str = config["sros"]["username"]
